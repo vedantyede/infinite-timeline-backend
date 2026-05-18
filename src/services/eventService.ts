@@ -1,7 +1,11 @@
 import { FilterQuery, Types } from "mongoose";
 import { Event } from "../models/Event";
 import { IEventDocument, EventFilterQuery } from "../types";
-import { deriveSortDates, buildPaginationMeta, paginationOffsets } from "../utils/response";
+import {
+  deriveSortDates,
+  buildPaginationMeta,
+  paginationOffsets,
+} from "../utils/response";
 import { NotFoundError, ForbiddenError } from "../utils/errors";
 import config from "../config";
 
@@ -9,7 +13,7 @@ import config from "../config";
 
 function buildFilter(
   userId: string,
-  query: EventFilterQuery
+  query: EventFilterQuery,
 ): FilterQuery<IEventDocument> {
   const filter: FilterQuery<IEventDocument> = {
     userId: new Types.ObjectId(userId),
@@ -17,7 +21,10 @@ function buildFilter(
 
   // Category filter — support comma-separated list
   if (query.categories) {
-    const cats = query.categories.split(",").map((c) => c.trim()).filter(Boolean);
+    const cats = query.categories
+      .split(",")
+      .map((c) => c.trim())
+      .filter(Boolean);
     if (cats.length > 0) filter.categories = { $in: cats };
   }
 
@@ -35,10 +42,14 @@ function buildFilter(
   if (query.fromYear || query.toYear) {
     filter.sortDate = {} as Record<string, Date>;
     if (query.fromYear) {
-      (filter.sortDate as Record<string, Date>).$gte = new Date(`${query.fromYear}-01-01`);
+      (filter.sortDate as Record<string, Date>).$gte = new Date(
+        `${query.fromYear}-01-01`,
+      );
     }
     if (query.toYear) {
-      (filter.sortDate as Record<string, Date>).$lte = new Date(`${query.toYear}-12-31`);
+      (filter.sortDate as Record<string, Date>).$lte = new Date(
+        `${query.toYear}-12-31`,
+      );
     }
   }
 
@@ -53,17 +64,17 @@ function buildFilter(
 // ─── Service methods ──────────────────────────────────────────────────────────
 
 export async function getEvents(userId: string, query: EventFilterQuery) {
-  const page  = Math.max(1, query.page  ?? 1);
+  const page = Math.max(1, query.page ?? 1);
   const limit = Math.min(
     query.limit ?? config.pagination.defaultSize,
-    config.pagination.maxSize
+    config.pagination.maxSize,
   );
 
-  const filter   = buildFilter(userId, query);
+  const filter = buildFilter(userId, query);
   const { skip } = paginationOffsets(page, limit);
 
   const sortField = query.sortBy ?? "sortDate";
-  const sortOrder = query.order  === "desc" ? -1 : 1;
+  const sortOrder = query.order === "desc" ? -1 : 1;
 
   // Text-search adds a relevance score; use it when searching
   const sortSpec = query.search
@@ -74,10 +85,10 @@ export async function getEvents(userId: string, query: EventFilterQuery) {
   const [total, events] = await Promise.all([
     Event.countDocuments(filter),
     Event.find(filter)
-      .sort(sortSpec)
+      .sort(sortSpec as any)
       .skip(skip)
       .limit(limit)
-      .lean(),               // lean() returns plain objects — faster, less memory
+      .lean(), // lean() returns plain objects — faster, less memory
   ]);
 
   return {
@@ -95,9 +106,11 @@ export async function getEventById(eventId: string, userId: string) {
 
 export async function createEvent(
   userId: string,
-  data: Record<string, unknown>
+  data: Record<string, unknown>,
 ) {
-  const sortDates = deriveSortDates(data as Parameters<typeof deriveSortDates>[0]);
+  const sortDates = deriveSortDates(
+    data as Parameters<typeof deriveSortDates>[0],
+  );
 
   const event = await Event.create({
     ...data,
@@ -111,7 +124,7 @@ export async function createEvent(
 export async function updateEvent(
   eventId: string,
   userId: string,
-  data: Record<string, unknown>
+  data: Record<string, unknown>,
 ) {
   const existing = await Event.findById(eventId);
   if (!existing) throw new NotFoundError("Event");
@@ -119,10 +132,12 @@ export async function updateEvent(
 
   // Merge existing fields with updates so deriveSortDates always has full context
   const merged = { ...existing.toObject(), ...data };
-  const sortDates = deriveSortDates(merged as Parameters<typeof deriveSortDates>[0]);
+  const sortDates = deriveSortDates(
+    merged as Parameters<typeof deriveSortDates>[0],
+  );
 
   Object.assign(existing, data, sortDates);
-  await existing.save();     // triggers Mongoose validators
+  await existing.save(); // triggers Mongoose validators
 
   return existing.toObject();
 }
@@ -152,7 +167,7 @@ export async function getCategoryStats(userId: string) {
         _id: "$categories",
         count: { $sum: 1 },
         earliest: { $min: "$sortDate" },
-        latest:   { $max: "$sortDate" },
+        latest: { $max: "$sortDate" },
       },
     },
     { $sort: { count: -1 } },
@@ -165,13 +180,15 @@ export async function getTimelineStats(userId: string) {
     { $match: { userId: new Types.ObjectId(userId) } },
     {
       $group: {
-        _id:           null,
-        total:         { $sum: 1 },
-        exactCount:    { $sum: { $cond: ["$isExact", 1, 0] } },
-        rangeCount:    { $sum: { $cond: [{ $eq: ["$rangeMode", "range"] }, 1, 0] } },
-        yearCount:     { $sum: { $cond: [{ $eq: ["$rangeMode", "year"] }, 1, 0] } },
-        earliestDate:  { $min: "$sortDate" },
-        latestDate:    { $max: "$sortDate" },
+        _id: null,
+        total: { $sum: 1 },
+        exactCount: { $sum: { $cond: ["$isExact", 1, 0] } },
+        rangeCount: {
+          $sum: { $cond: [{ $eq: ["$rangeMode", "range"] }, 1, 0] },
+        },
+        yearCount: { $sum: { $cond: [{ $eq: ["$rangeMode", "year"] }, 1, 0] } },
+        earliestDate: { $min: "$sortDate" },
+        latestDate: { $max: "$sortDate" },
       },
     },
     { $project: { _id: 0 } },

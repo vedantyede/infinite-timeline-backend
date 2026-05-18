@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import { User } from "../models/User";
 import { signAccessToken, signRefreshToken, verifyRefreshToken } from "../services/tokenService";
-import { sendSuccess, sendError } from "../utils/response";
+import { sendSuccess } from "../utils/response";
 import { ConflictError, UnauthorizedError } from "../utils/errors";
 
 export async function register(
@@ -19,7 +19,7 @@ export async function register(
 
     const user = await User.create({ name, email, passwordHash: password });
 
-    const payload = { userId: (user._id as string).toString(), email: user.email };
+    const payload = { userId: (user._id as any).toString(), email: user.email };
     const accessToken  = signAccessToken(payload);
     const refreshToken = signRefreshToken(payload);
 
@@ -47,7 +47,7 @@ export async function login(
     const valid = await user.comparePassword(password);
     if (!valid) throw new UnauthorizedError("Invalid credentials");
 
-    const payload = { userId: (user._id as string).toString(), email: user.email };
+    const payload = { userId: (user._id as any).toString(), email: user.email };
     const accessToken  = signAccessToken(payload);
     const refreshToken = signRefreshToken(payload);
 

@@ -1,7 +1,7 @@
-import { Schema, model, Types } from "mongoose";
+import { Schema, model } from "mongoose";
 import { IEventDocument } from "../types";
 
-const EventSchema = new Schema<IEventDocument>(
+const EventSchema = new Schema(
   {
     // ── Core fields ────────────────────────────────────────────────────────────
     title: {

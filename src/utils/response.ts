@@ -21,8 +21,8 @@ export function sendError(
   statusCode = 400,
   errors?: unknown
 ): void {
-  const body: ApiResponse = { success: false, message };
-  if (errors) (body as Record<string, unknown>).errors = errors;
+  const body: ApiResponse<unknown> = { success: false, message };
+  if (errors) (body as unknown as Record<string, unknown>).errors = errors;
   res.status(statusCode).json(body);
 }
 
