@@ -23,7 +23,8 @@ export function validate(schema: Joi.Schema, target: Target = "body") {
       return;
     }
 
-    (req as Record<string, unknown>)[target] = value;
+    const reqAny = req as unknown as Record<string, unknown>;
+    reqAny[target] = value;
     next();
   };
 }
